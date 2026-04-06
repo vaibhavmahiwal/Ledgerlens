@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Applicant {
+  id        String   @id @default(uuid())
+  name      String
+  pan       String   @unique
+  phone     String
+  agentId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statements Statement[]
+  reports    Report[]
+}
+
+model Statement {
+  id          String   @id @default(uuid())
+  applicantId String
+  bank        String
+  format      String
+  filePath    String
+  periodStart DateTime
+  periodEnd   DateTime
+  months      Int
+  uploadedAt  DateTime @default(now())
+
+  applicant    Applicant     @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  jobs         Job[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  statementId String
+  date        DateTime
+  description String
+  debit       Decimal? @db.Decimal(12, 2)
+  credit      Decimal? @db.Decimal(12, 2)
+  balance     Decimal  @db.Decimal(12, 2)
+  category    String?
+  rawText     String?
+  createdAt   DateTime @default(now())
+
+  statement Statement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+}
+
+model Job {
+  id            String    @id @default(uuid())
+  statementId   String
+  status        JobStatus @default(QUEUED)
+  correlationId String
+  bullJobId     String?
+  retryCount    Int       @default(0)
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  statement Statement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  report    Report?
+}
+
+model Report {
+  id                String   @id @default(uuid())
+  jobId             String   @unique
+  applicantId       String
+  pdfPath           String
+  jsonSummary       Json
+  avgMonthlyInflow  String?
+  avgMonthlyOutflow String?
+  totalEmisBurden   String?
+  bounceCount       String?
+  generatedAt       DateTime @default(now())
+
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicant Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+}
+
+enum JobStatus {
+  QUEUED
+  PARSING
+  PARSED
+  ANALYZING
+  ANALYZED
+  GENERATING
+  COMPLETED
+  FAILED
+}
