@@ -23,6 +23,9 @@ router.post(
         throw new ValidationError("No file uploaded")
       }
 
+     // console.log("req.body:", req.body)
+    // console.log("req.file:", req.file)
+
       log.info({ file: req.file.filename }, "File uploaded successfully")
 
       // 2. Validate request body with Zod
