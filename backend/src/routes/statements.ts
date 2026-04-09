@@ -25,11 +25,22 @@ router.post(
 
      // console.log("req.body:", req.body)
     // console.log("req.file:", req.file)
-
+    
+       
       log.info({ file: req.file.filename }, "File uploaded successfully")
 
       // 2. Validate request body with Zod
-      const parsed = newApplicantUploadSchema.safeParse(req.body)
+      // Trim all keys and values before validation
+const trimmedBody: Record<string, string> = {}
+for (const key of Object.keys(req.body)) {
+  trimmedBody[key.trim()] = typeof req.body[key] === "string"
+    ? req.body[key].trim()
+    : req.body[key]
+}
+
+// 2. Validate request body with Zod
+const parsed = newApplicantUploadSchema.safeParse(trimmedBody)
+console.log("trimmedBody:", JSON.stringify(trimmedBody))
       if (!parsed.success) {
         throw new ValidationError(
           parsed.error.issues.map((e) => e.message).join(", ")

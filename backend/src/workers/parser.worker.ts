@@ -6,9 +6,21 @@ import { extractTextFromPDF } from "../services/parser/pdf.parser"
 import { parseHDFCTransactions } from "../services/parser/banks/hdfc"
 import { parseSBITransactions } from "../services/parser/banks/sbi"
 import { parseICICITransactions } from "../services/parser/banks/icici"
+import { parseCSVTransactions } from "../services/parser/csv.parser"
 import { ParserJobData } from "../queues/parser.queue"
 
-// Pick the right parser based on bank
+
+const parseIndianDate = (dateStr: string): Date => {
+  // Handle DD/MM/YYYY format
+  const parts = dateStr.split("/")
+  if (parts.length === 3) {
+    const [day, month, year] = parts
+    return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`)
+  }
+  // Fallback
+  return new Date(dateStr)
+}
+
 const getBankParser = (bank: string) => {
   switch (bank.toLowerCase()) {
     case "hdfc": return parseHDFCTransactions
@@ -24,21 +36,24 @@ const processParserJob = async (job: Job<ParserJobData>) => {
 
   log.info("Parser worker started")
 
-  // 1. Update job status to PARSING
   await prisma.job.update({
     where: { id: jobId },
     data: { status: "PARSING", startedAt: new Date() },
   })
 
   try {
-    // 2. Extract raw text from PDF
-    log.info({ filePath, format }, "Extracting text from file")
-    const rawText = await extractTextFromPDF(filePath, correlationId)
+    // Extract transactions based on format
+    let rawTransactions
 
-    // 3. Parse transactions using bank-specific parser
-    log.info({ bank }, "Parsing transactions")
-    const bankParser = getBankParser(bank)
-    const rawTransactions = bankParser(rawText)
+    if (format === "csv") {
+      log.info({ filePath }, "Parsing CSV file")
+      rawTransactions = parseCSVTransactions(filePath, correlationId)
+    } else {
+      log.info({ filePath }, "Extracting text from PDF")
+      const rawText = await extractTextFromPDF(filePath, correlationId)
+      const bankParser = getBankParser(bank)
+      rawTransactions = bankParser(rawText)
+    }
 
     log.info({ count: rawTransactions.length }, "Transactions extracted")
 
@@ -46,16 +61,16 @@ const processParserJob = async (job: Job<ParserJobData>) => {
       throw new Error("No transactions found in statement")
     }
 
-    // 4. Normalize and save transactions to PostgreSQL
+    // Save to database
     const transactionData = rawTransactions.map((tx) => ({
-      statementId,
-      date: new Date(tx.date),
-      description: tx.description,
-      debit: tx.debit ? parseFloat(tx.debit) : null,
-      credit: tx.credit ? parseFloat(tx.credit) : null,
-      balance: parseFloat(tx.balance),
-      rawText: tx.rawText,
-    }))
+  statementId,
+  date: parseIndianDate(tx.date),   
+  description: tx.description,
+  debit: tx.debit ? parseFloat(tx.debit) : null,
+  credit: tx.credit ? parseFloat(tx.credit) : null,
+  balance: parseFloat(tx.balance),
+  rawText: tx.rawText,
+}))
 
     await prisma.transaction.createMany({
       data: transactionData,
@@ -63,7 +78,6 @@ const processParserJob = async (job: Job<ParserJobData>) => {
 
     log.info({ count: transactionData.length }, "Transactions saved to DB")
 
-    // 5. Update job status to PARSED
     await prisma.job.update({
       where: { id: jobId },
       data: { status: "PARSED" },
@@ -71,16 +85,9 @@ const processParserJob = async (job: Job<ParserJobData>) => {
 
     log.info("Parser worker completed successfully")
 
-    // 6. Return summary for next worker
-    return {
-      jobId,
-      statementId,
-      transactionCount: transactionData.length,
-      correlationId,
-    }
+    return { jobId, statementId, transactionCount: transactionData.length, correlationId }
 
   } catch (err) {
-    // Update job status to FAILED
     await prisma.job.update({
       where: { id: jobId },
       data: {
@@ -92,14 +99,10 @@ const processParserJob = async (job: Job<ParserJobData>) => {
   }
 }
 
-// Create the worker — listens to parser queue
 export const parserWorker = new Worker<ParserJobData>(
   "parser",
   processParserJob,
-  {
-    connection: bullMQRedis,
-    concurrency: 3, // process 3 jobs simultaneously
-  }
+  { connection: bullMQRedis, concurrency: 3 }
 )
 
 parserWorker.on("completed", (job) => {

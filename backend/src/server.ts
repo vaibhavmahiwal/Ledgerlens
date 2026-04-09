@@ -20,6 +20,19 @@ app.use(express.json({ limit: "10mb" }))
 // Parse URL-encoded bodies (form submissions)
 app.use(express.urlencoded({ extended: true }))
 
+// Trim all body keys and values
+app.use((req, res, next) => {
+  if (req.body) {
+    const trimmed: Record<string, string> = {}
+    for (const key of Object.keys(req.body)) {
+      trimmed[key.trim()] = typeof req.body[key] === "string" 
+        ? req.body[key].trim() 
+        : req.body[key]
+    }
+    req.body = trimmed
+  }
+  next()
+})
 
 
 // Attach a unique ID to every request
