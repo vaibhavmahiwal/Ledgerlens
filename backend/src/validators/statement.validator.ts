@@ -11,9 +11,9 @@ export const createApplicantSchema = z.object({
 })
 
 export const uploadStatementSchema = z.object({
-  bank: z.enum(["hdfc", "sbi", "icici"], {
-    errorMap: () => ({ message: "Bank must be hdfc, sbi, or icici" }),
-  }),
+ bank: z.enum(["hdfc", "sbi", "icici"], {
+  message: "Bank must be hdfc, sbi, or icici",
+}),
   periodStart: z
     .string()
     .refine((val) => !isNaN(Date.parse(val)), "Invalid start date")

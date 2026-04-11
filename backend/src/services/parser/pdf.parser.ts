@@ -1,4 +1,4 @@
-import pdfParse from "pdf-parse"
+const pdfParse = require("pdf-parse")
 import fs from "fs"
 import { createChildLogger } from "../../lib/logger"
 

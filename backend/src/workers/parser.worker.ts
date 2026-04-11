@@ -8,7 +8,7 @@ import { parseSBITransactions } from "../services/parser/banks/sbi"
 import { parseICICITransactions } from "../services/parser/banks/icici"
 import { parseCSVTransactions } from "../services/parser/csv.parser"
 import { ParserJobData } from "../queues/parser.queue"
-
+import { analysisQueue } from "../queues/analysis.queue"
 
 const parseIndianDate = (dateStr: string): Date => {
   // Handle DD/MM/YYYY format
@@ -31,7 +31,7 @@ const getBankParser = (bank: string) => {
 }
 
 const processParserJob = async (job: Job<ParserJobData>) => {
-  const { jobId, statementId, filePath, bank, format, correlationId } = job.data
+  const { jobId, statementId, applicantId, filePath, bank, format, correlationId } = job.data
   const log = createChildLogger(correlationId, { jobId, workerId: "parser" })
 
   log.info("Parser worker started")
@@ -42,7 +42,6 @@ const processParserJob = async (job: Job<ParserJobData>) => {
   })
 
   try {
-    // Extract transactions based on format
     let rawTransactions
 
     if (format === "csv") {
@@ -61,20 +60,19 @@ const processParserJob = async (job: Job<ParserJobData>) => {
       throw new Error("No transactions found in statement")
     }
 
-    // Save to database
-    const transactionData = rawTransactions.map((tx) => ({
-  statementId,
-  date: parseIndianDate(tx.date),   
-  description: tx.description,
-  debit: tx.debit ? parseFloat(tx.debit) : null,
-  credit: tx.credit ? parseFloat(tx.credit) : null,
-  balance: parseFloat(tx.balance),
-  rawText: tx.rawText,
-}))
+    const transactionData = rawTransactions
+  .map((tx: any) => ({
+    statementId,
+    date: parseIndianDate(tx.date),
+    description: tx.description,
+    debit: tx.debit ? parseFloat(tx.debit) : null,
+    credit: tx.credit ? parseFloat(tx.credit) : null,
+    balance: parseFloat(tx.balance),
+    rawText: tx.rawText,
+  }))
+  .filter((tx: any) => !isNaN(tx.date.getTime()))
 
-    await prisma.transaction.createMany({
-      data: transactionData,
-    })
+    await prisma.transaction.createMany({ data: transactionData })
 
     log.info({ count: transactionData.length }, "Transactions saved to DB")
 
@@ -83,6 +81,15 @@ const processParserJob = async (job: Job<ParserJobData>) => {
       data: { status: "PARSED" },
     })
 
+    // ← THIS WAS MISSING
+    await analysisQueue.add("analyze", {
+      jobId,
+      statementId,
+      applicantId,
+      correlationId,
+    })
+
+    log.info({ jobId }, "Job pushed to analysis queue")
     log.info("Parser worker completed successfully")
 
     return { jobId, statementId, transactionCount: transactionData.length, correlationId }

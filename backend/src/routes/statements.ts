@@ -127,20 +127,12 @@ router.get(
   "/status/:jobId",
   async (req: Request, res: Response, next: NextFunction) => {
     const log = createChildLogger(req.correlationId)
-
     try {
       const job = await prisma.job.findUnique({
-  where: { id: req.params.jobId },
-  include: {
-    statement: {
-      include: { applicant: true },
-    },
-  },
-})
+        where: { id: req.params.jobId as string },
+      })
 
-      if (!job) {
-        throw new NotFoundError("Job")
-      }
+      if (!job) throw new NotFoundError("Job")
 
       log.info({ jobId: job.id, status: job.status }, "Job status fetched")
 
@@ -148,13 +140,9 @@ router.get(
         jobId: job.id,
         status: job.status,
         correlationId: job.correlationId,
-        applicant: job.statement.applicant.name,
-        bank: job.statement.bank,
         createdAt: job.createdAt,
         completedAt: job.completedAt,
         errorMessage: job.errorMessage,
-        // If completed, include report ID
-        reportId: job.report?.id ?? null,
       })
     } catch (err) {
       next(err)

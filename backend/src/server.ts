@@ -5,6 +5,7 @@ import { logger } from "./lib/logger"
 import { correlationIdMiddleware } from "./middleware/correlationId"
 import { errorHandler } from "./middleware/errorHandler"
 import statementsRouter from "./routes/statements"
+import reportsRouter from "./routes/reports"
 
 // Create the Express app
 const app = express()
@@ -19,7 +20,7 @@ app.use(express.json({ limit: "10mb" }))
 
 // Parse URL-encoded bodies (form submissions)
 app.use(express.urlencoded({ extended: true }))
-
+app.use("/api/v1/reports", reportsRouter)
 // Trim all body keys and values
 app.use((req, res, next) => {
   if (req.body) {

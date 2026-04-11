@@ -7,7 +7,7 @@ const schema=z.object({
     NODE_ENV: z.string().default("development"),
     DATABASE_URL:z.string(),
     REDIS_URL:z.string(),
-    ANTHROPIC_API_KEY:z.string(),
+     GROQ_API_KEY: z.string(),
     JWT_SECRET: z.string(),
     SENTRY_DSN: z.string().optional(),
     UPLOAD_DIR: z.string().default("./uploads"),
