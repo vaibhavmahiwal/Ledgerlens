@@ -8,7 +8,8 @@ const router = Router()
 
 // GET /api/v1/reports/:id
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
-  const log = createChildLogger(req.correlationId)
+  // Fix 1: Cast correlationId to string
+  const log = createChildLogger(req.correlationId as string || "")
   try {
     const report = await prisma.report.findUnique({
       where: { id: req.params.id },
@@ -16,6 +17,9 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
     })
 
     if (!report) throw new NotFoundError("Report")
+    
+    // Fix 2: Safety check for the relation
+    if (!report.applicant) throw new Error("Applicant not found for this report")
 
     log.info({ reportId: report.id }, "Report fetched")
 
@@ -37,7 +41,7 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
 
 // GET /api/v1/reports/:id/download
 router.get("/:id/download", async (req: Request, res: Response, next: NextFunction) => {
-  const log = createChildLogger(req.correlationId)
+  const log = createChildLogger(req.correlationId as string || "")
   try {
     const report = await prisma.report.findUnique({
       where: { id: req.params.id },
@@ -45,6 +49,7 @@ router.get("/:id/download", async (req: Request, res: Response, next: NextFuncti
     })
 
     if (!report) throw new NotFoundError("Report")
+    if (!report.applicant) throw new Error("Applicant not found")
     if (!fs.existsSync(report.pdfPath)) throw new NotFoundError("PDF file")
 
     log.info({ reportId: report.id }, "PDF download started")
