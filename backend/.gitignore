@@ -6,3 +6,7 @@ reports/
 *.log
 
 /generated/prisma
+
+
+*.pem
+.env.*

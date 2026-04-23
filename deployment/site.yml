@@ -1,0 +1,6 @@
+---
+- name: Deploy LedgerLens Application
+  hosts: ledgerlens_servers
+  become: yes
+  roles:
+    - ledgerlens
