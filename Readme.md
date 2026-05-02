@@ -1,7 +1,7 @@
 # LedgerLens 🔍
 ### AI-Powered Bank Statement Intelligence for Indian NBFCs and Loan DSAs
 
-> Transforming raw bank statements into structured credit intelligence — in under 90 seconds instead of 60 minutes.
+> Async document processing pipeline — BullMQ 3-queue architecture, Groq LLaMA 3.3 70B analysis, Pino structured logging with correlation IDs, Zod validation, and Sentry error tracking — delivering structured credit intelligence PDFs in under 90 seconds.
 
 ---
 
