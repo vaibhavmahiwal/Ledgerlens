@@ -3,13 +3,10 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
-# --- FIX START ---
-# Copy prisma folder and generate client before copying source code
 COPY prisma ./prisma/
 RUN npx prisma generate
-# --- FIX END ---
 
 COPY . .
 RUN npm run build
@@ -18,10 +15,12 @@ RUN npm run build
 FROM node:18-alpine
 WORKDIR /app
 
-# Copy built code and dependencies
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
+
+# ← THIS WAS MISSING — no CMD means container starts and immediately exits
+CMD ["node", "dist/index.js"]

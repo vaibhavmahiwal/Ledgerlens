@@ -1,8 +1,9 @@
-// Base class for all our custom errors
+// Base class for all  custom errors
 // Extends the built-in Error class with two extra fields:
 //   statusCode → HTTP status to send back to client
 //   isOperational → true means "expected error we handled"
 //                   false means "unexpected crash"
+
 export class AppError extends Error {
   public readonly statusCode: number
   public readonly isOperational: boolean

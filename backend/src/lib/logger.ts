@@ -8,7 +8,7 @@ export const logger=pino({
      ?{
         target:"pino-pretty",
         options:{
-             colorize: true,
+            colorize: true,
             translateTime: "SYS:standard",
             ignore: "pid,hostname",
         },
@@ -26,7 +26,7 @@ export const logger=pino({
 })
 
 //child logger with a correlation id attached
-//// Use this inside request handlers and workers
+//will inside request handlers and workers
 // Every log line from this child will include the correlationId
 export const createChildLogger=(correlationId:string,context?:Record<string,unknown>)=>{
     return logger.child({

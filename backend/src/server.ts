@@ -6,6 +6,9 @@ import { correlationIdMiddleware } from "./middleware/correlationId"
 import { errorHandler } from "./middleware/errorHandler"
 import statementsRouter from "./routes/statements"
 import reportsRouter from "./routes/reports"
+import applicantsRouter from "./routes/applicants"
+import jobsRouter from "./routes/jobs"
+
 
 // Create the Express app
 const app = express()
@@ -13,14 +16,15 @@ const app = express()
 //security
 app.use(helmet())
 
-
-
 // Parse incoming JSON bodies
 app.use(express.json({ limit: "10mb" }))
 
 // Parse URL-encoded bodies (form submissions)
 app.use(express.urlencoded({ extended: true }))
 app.use("/api/v1/reports", reportsRouter)
+app.use("/api/v1/applicants", applicantsRouter)
+app.use("/api/v1/jobs", jobsRouter)
+
 // Trim all body keys and values
 app.use((req, res, next) => {
   if (req.body) {
